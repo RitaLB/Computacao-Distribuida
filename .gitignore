@@ -1,0 +1,4 @@
+bin/
+*.o
+*.part
+*.part.meta
