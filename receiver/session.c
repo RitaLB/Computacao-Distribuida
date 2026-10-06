@@ -1,6 +1,6 @@
 /*
  * INE5418 - T1 - Autores: NomeA, NomeB, NomeC   <-- TODO
- * session.c - implementação da tabela de sessões.
+ * session.c - tabela de sessões.
  */
 #include "session.h"
 
@@ -18,9 +18,16 @@ void sessions_init(void)
 session_t *session_find(const struct sockaddr_in *peer)
 {
     for (int i = 0; i < MAX_SESSIONS; i++)
-        if (table[i].in_use &&
-            table[i].peer.sin_addr.s_addr == peer->sin_addr.s_addr &&
+        if (table[i].in_use && table[i].peer.sin_addr.s_addr == peer->sin_addr.s_addr &&
             table[i].peer.sin_port == peer->sin_port)
+            return &table[i];
+    return NULL;
+}
+
+session_t *session_by_name(const char *name)
+{
+    for (int i = 0; i < MAX_SESSIONS; i++)
+        if (table[i].in_use && !table[i].done && strcmp(table[i].name, name) == 0)
             return &table[i];
     return NULL;
 }
@@ -31,8 +38,8 @@ session_t *session_create(const struct sockaddr_in *peer)
         if (!table[i].in_use) {
             memset(&table[i], 0, sizeof table[i]);
             table[i].in_use = 1;
-            table[i].peer = *peer;
             table[i].fd = -1;
+            table[i].peer = *peer;
             table[i].last_activity = time(NULL);
             return &table[i];
         }
@@ -51,14 +58,7 @@ void sessions_gc(time_t now)
 {
     for (int i = 0; i < MAX_SESSIONS; i++)
         if (table[i].in_use && now - table[i].last_activity > SESSION_TIMEOUT_S)
-            session_close(&table[i]);   /* mantém o .part: o cliente pode voltar e retomar */
-}
-
-int name_in_use(const char *name)
-{
-    for (int i = 0; i < MAX_SESSIONS; i++)
-        if (table[i].in_use && strcmp(table[i].name, name) == 0) return 1;
-    return 0;
+            session_close(&table[i]);
 }
 
 int sanitize_filename(const char *in, size_t in_len, char *out, size_t out_sz)

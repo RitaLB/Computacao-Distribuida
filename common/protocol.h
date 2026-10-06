@@ -35,7 +35,7 @@
 #define MAX_PKT_SIZE   (HEADER_SIZE + MAX_PAYLOAD)
 #define MAX_NAME_LEN   255
 
-#define TIMEOUT_MS     300                  /* espera pelo ACK antes de retransmitir */
+#define TIMEOUT_MS     100                  /* espera pelo ACK antes de retransmitir */
 #define MAX_RETRIES    20                   /* tentativas antes de desistir */
 
 /* Limite do enunciado: no máximo 32 KiB de arquivo em memória por vez. */

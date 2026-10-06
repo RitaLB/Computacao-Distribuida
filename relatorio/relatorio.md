@@ -12,7 +12,7 @@
 
 TODO: explicar
 - Stop and Wait: um DATA em voo; só avança com ACK correspondente
-- Timeout (300 ms) e limite de tentativas (20)
+- Timeout (100 ms) e limite de tentativas (20)
 - Perda do DATA vs perda do ACK
 - Idempotência no receiver: `offset < esperado` → não grava, só reenvia ACK
 - CRC32 descarta pacotes corrompidos (tratados como perdidos)
@@ -34,7 +34,7 @@ sequenceDiagram
     S->>R: DATA(offset=40960)
     R-->>S: ACK(41984)
     Note over S: ✖ sender morre (kill -9)
-    Note over R: a.bin.part = 41984 bytes (estado persistido)
+    Note over R: a.bin.part = 41984 bytes (tamanho do .part = offset de retomada) (estado persistido)
     Note over S: usuário executa o sender novamente
     S->>R: START(nome=a.bin, tamanho=100MB)
     R-->>S: START_ACK(offset=41984)
@@ -53,7 +53,7 @@ sequenceDiagram
 TODO: explicar
 - Um socket UDP + `poll` + tabela de sessões por (ip, porta)
 - Cada sessão tem seu próprio `.part`, offset e fd
-- Mesmo nome ao mesmo tempo → `ERR_BUSY`
+- Mesmo nome ao mesmo tempo, de IPs diferentes → `ERR_BUSY`
 - Timeout de sessão inativa (o `.part` é mantido)
 
 ### Caso de uso

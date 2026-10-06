@@ -64,11 +64,12 @@ sender                         receiver
 
 ## Decisões de projeto
 
-- **Stop and Wait com offset como número de sequência**: um pacote por vez; timeout de 300 ms e até 20 retransmissões.
+- **Stop and Wait com offset como número de sequência**: um pacote por vez; timeout de 100 ms e até 20 tentativas por pacote.
 - **Memória**: o sender lê no máximo 1024 bytes por vez (`pread`) — bem abaixo do limite de 32 KiB.
 - **Duplicatas**: se o ACK se perde, o sender retransmite; o receiver reconhece `offset < esperado`, **não grava de novo** e reenvia o ACK.
 - **Sem arquivo corrompido/duplicado**: dados vão para `<nome>.part`; só vira `<nome>` por `rename()` ao final.
-- **Retomada**: o offset de retomada é o tamanho do `.part`; `<nome>.part.meta` guarda o tamanho total para detectar outro arquivo com o mesmo nome.
+- **Retomada**: o offset de retomada é o tamanho do `.part` (gravação sequencial e ACK só depois do `write`). Se o `.part` for maior que o tamanho informado, recomeça do zero. O cliente que morre e volta ganha outra porta; um START do mesmo IP e mesmo nome *assume* a sessão órfã.
+- **Fim confiável**: após o `rename`, a sessão fica marcada `done`; se o `END_ACK` se perder, o `END` repetido é reconhecido.
 - **Concorrência**: um socket UDP, laço `poll` e tabela de sessões por `(ip, porta)`. Mesmo nome simultâneo → `ERROR(ERR_BUSY)`.
 - **Segurança básica**: o receiver aceita só o *basename* (rejeita `/`, `..`).
 - **Servidor web**: não se comunica com o receiver; lê o diretório (`*.part` = em transferência).
@@ -78,13 +79,21 @@ sender                         receiver
 ```bash
 make
 tests/test_basic.sh             # transferência simples
-LOSS=20 tests/test_loss.sh      # 20% de perda simulada (variável SIM_LOSS)
+LOSS=20 tests/test_loss.sh      # 20% de perda simulada nos dois lados (variável SIM_LOSS)
+tests/test_sizes.sh             # tamanhos de borda (0, 1, 1023, 1024, 1025 ... bytes)
 tests/test_resume.sh 100 2      # mata o sender com kill -9 e retoma
 tests/test_concurrent.sh        # 3 clientes simultâneos
 tests/test_web.sh <diretorio>   # GET /files
 ```
 `SIM_LOSS=<0..100>` (e `SIM_LOSS_VERBOSE=1`) faz `sender`/`receiver` descartarem pacotes de propósito.
 Arquivo de 1 GB: `dd if=/dev/urandom of=1g.bin bs=1M count=1024` e compare com `sha256sum`.
+
+## Resultados medidos (loopback)
+
+- 1 GiB: **34 s**, hash idêntico, sender com **~1,8 MB** de memória residente (pico).
+- 20 MB sem perdas: ~1,2 s; 3 clientes simultâneos de 20 MB: todos idênticos.
+- 20% de perda nos dois lados: arquivo idêntico em 5/5 rodadas.
+- `kill -9` do sender com ~30% enviado: retoma do byte exato e conclui idêntico, sem arquivos extras.
 
 ## Restrições do enunciado (checklist)
 
