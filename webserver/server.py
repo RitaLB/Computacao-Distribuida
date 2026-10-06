@@ -10,8 +10,8 @@ API:  GET /files  ->  lista os arquivos do diretório em JSON.
 
 Não precisa conversar com o receiver: ele só lê o MESMO diretório onde o
 receiver grava. Convenção de nomes criada pelo receiver:
-    nome        -> transferência concluída   => "available"
-    nome.part   -> transferência em andamento => "in_transfer"
+    nome        -> transferência concluída   => "disponível"
+    nome.part   -> transferência em andamento => "em transferência"
     nome.part.meta -> metadado interno (ignorado)
 """
 import argparse
@@ -22,6 +22,8 @@ from urllib.parse import urlparse
 
 PART = ".part"
 META = ".part.meta"
+STATUS_OK = "disponível"
+STATUS_BUSY = "em transferência"
 
 
 def list_files(directory):
@@ -31,15 +33,15 @@ def list_files(directory):
             if not e.is_file(follow_symlinks=False) or e.name.endswith(META):
                 continue
             if e.name.endswith(PART):
-                name, status = e.name[: -len(PART)], "in_transfer"
+                name, status = e.name[: -len(PART)], STATUS_BUSY
             else:
-                name, status = e.name, "available"
+                name, status = e.name, STATUS_OK
             try:
                 size = e.stat().st_size
             except OSError:          # arquivo pode ter sido renomeado agora (fim da transferência)
                 continue
             # se existir "x" e "x.part" ao mesmo tempo, "em transferência" prevalece
-            if name not in files or status == "in_transfer":
+            if name not in files or status == STATUS_BUSY:
                 files[name] = {"name": name, "size": size, "status": status}
     return sorted(files.values(), key=lambda f: f["name"])
 
@@ -56,6 +58,14 @@ def make_handler(directory):
                 self.wfile.write(body)
             else:
                 self.send_error(404, "Use GET /files")
+
+        def _not_allowed(self):          # API tem um único método: GET /files
+            self.send_response(405)
+            self.send_header("Allow", "GET")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        do_POST = do_PUT = do_DELETE = do_PATCH = do_HEAD = _not_allowed
 
     return Handler
 

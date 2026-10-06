@@ -42,8 +42,8 @@ python3 webserver/server.py /tmp/backup --port 8080
 curl http://localhost:8080/files
 ```
 ```json
-{"files":[{"name":"a.txt","size":1234,"status":"available"},
-          {"name":"b.iso","size":52428800,"status":"in_transfer"}]}
+{"files":[{"name":"a.txt","size":1234,"status":"disponível"},
+          {"name":"b.iso","size":52428800,"status":"em transferência"}]}
 ```
 
 ## Protocolo (resumo)
